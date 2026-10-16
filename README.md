@@ -10,6 +10,31 @@ congestion, active incidents) on top of the historical signal (past incidents an
 complaints). The gap between "historically risky" and "currently congested right now" is
 itself a feature.
 
+## Dataset used
+
+The provided competition dataset, under `dataset/`:
+
+- `locations.csv` (1,000 locations)
+- `incidents.csv` (10,000 incidents)
+- `public_complaints.csv` (8,000 complaints)
+
+All three are joined on `location_id` into one feature table per location. Two free external
+data sources add signal: TomTom Traffic (live congestion and active incidents) and Open-Meteo
+(historical weekly rainfall for Vijayawada).
+
+## Modeling stance (from scratch, no LLM or pretrained model)
+
+Every prediction comes from a model we **train from scratch** with scikit-learn on the
+provided data. There is no LLM, no pretrained model, and no hosted model API in the prediction
+path:
+
+- Module 1: three quantile Gradient Boosting regressors, fit on our feature table.
+- Module 2: a Random Forest classifier with isotonic calibration, fit on a weekly panel.
+- Module 3: a statistical divergence detector (z-scores), no external model.
+
+TomTom and Open-Meteo are **data sources only**. They supply input features; they do not make
+any prediction or ranking. No OpenAI/Anthropic/Gemini/Cohere/etc. API is used anywhere.
+
 ## Architecture
 
 ```mermaid
@@ -135,6 +160,19 @@ TomTom key is only used offline inside `traffic_features.ipynb`.
   across every road condition, type and month, so Module 2's ranking AUC sits near chance.
   The deliverable is the correct, calibrated methodology; point it at data with real signal
   and the lift rises automatically.
+
+## How this addresses the judging criteria
+
+| Criterion | Where it is covered |
+| --- | --- |
+| Problem understanding and user need | Clear user (municipal road-repair ops) and question ("where should we fix first"), scoped to prioritising limited crews. See the intro and the fused card. |
+| Provided dataset usage | `locations.csv`, `incidents.csv`, `public_complaints.csv` joined on `location_id`; severity and priority weighting, z-scored outcome signals, weekly panels, and context features. See Data sources and the module notebooks. |
+| Data Science / ML quality | Time-aware splits (no shuffle), rolling-origin walk-forward, a base vs calibrated comparison, and honest metrics: pinball loss and band coverage (Module 1), Brier before and after calibration plus a reliability table (Module 2). |
+| ML model from scratch | All models trained from scratch with scikit-learn on the provided data (quantile Gradient Boosting, Random Forest, isotonic calibration). No pretrained model and no model API in the prediction path. See Modeling stance. |
+| Working product and workflow | End to end: notebooks export JSON, the Next.js dashboard reads it and renders a map, 3D city, deployment planner, and explainable cards. See Running it. |
+| USP and innovation | Not one risk number but a confidence band, a calibrated forward-looking probability, a data-gap flag, and live traffic, fused into one explainable card. See Fusion and The three modules. |
+| Impact, feasibility and responsible use | Plausible municipal benefit, free-tier-aware API usage, and an explicit honesty note that the synthetic data has no learnable signal (AUC near chance). See Validation notes. |
+| Demo and presentation | This README with an architecture diagram and tables, the live dashboard, and the slide deck (`ppt.pptx`). |
 
 ## Frontend components
 
