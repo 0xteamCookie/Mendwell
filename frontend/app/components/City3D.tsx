@@ -62,7 +62,7 @@ export function City3D({ rows, selectedId, onSelect }: { rows: Row[]; selectedId
       grid.position.y = 0.02;
       scene.add(grid);
 
-      // background city blocks (seeded so it is stable)
+      // filler city blocks, seeded for stability
       const towerXY = rows.map(pos);
       let seed = 7;
       const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
@@ -105,7 +105,7 @@ export function City3D({ rows, selectedId, onSelect }: { rows: Row[]; selectedId
         tmeshes.push(mesh);
       });
 
-      // rank labels for the top 8
+      // rank labels, top 8
       const labelSprite = (txt: string) => {
         const c = document.createElement("canvas");
         c.width = 128; c.height = 64;
@@ -126,7 +126,7 @@ export function City3D({ rows, selectedId, onSelect }: { rows: Row[]; selectedId
         scene.add(sp);
       });
 
-      // orbit camera (hand rolled, no extra libs)
+      // hand-rolled orbit camera
       let theta = 0.7, phi = 1.0, radius = 95;
       const target = new THREE.Vector3(0, 4, 0);
       const goal = new THREE.Vector3(0, 4, 0);

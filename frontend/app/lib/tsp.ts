@@ -15,7 +15,7 @@ export function closedLen(order: number[], d: number[][]) {
   return t;
 }
 
-// Nearest neighbour start, then 2-opt until no improving swap. pts[0] is the depot.
+// nearest-neighbour start + 2-opt. pts[0] = depot
 export function solveTSP(pts: LatLng[]): number[] {
   const n = pts.length;
   const d = pts.map((a) => pts.map((b) => hav(a, b)));

@@ -2,7 +2,7 @@ import { useState } from "react";
 import type { Composite } from "../lib/types";
 import { TIER, tierByFraction, clean } from "../lib/theme";
 
-// Pick an icon tone word for each why line by its leading label
+// dot color by why-line type
 function lineTone(line: string) {
   if (line.startsWith("Risk")) return "#b45309";
   if (line.startsWith("Data")) return "#7c3aed";

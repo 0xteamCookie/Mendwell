@@ -1,4 +1,4 @@
-# Smart City — Where Should We Fix First?
+# Smart City: Where Should We Fix First?
 
 An explainable road-safety priority product for Vijayawada and Amaravati. It fuses a
 historical municipal dataset with a live TomTom traffic signal across three differentiated
@@ -55,9 +55,9 @@ flowchart TD
 
 | Module | Question | Method | Output |
 | --- | --- | --- | --- |
-| 1 — Uncertainty-aware ranking | How urgent, and how sure are we? | three quantile Gradient Boosting regressors (5th / 50th / 95th percentile) give a priority band, not a point score | `module1_priority.json` |
-| 2 — Weather/temporal calibrated risk | What is the chance of a severe incident next week? | Random Forest on a `(location, week)` panel with real weekly rainfall, then isotonic `CalibratedClassifierCV`; time-aware + rolling-origin validation | `module2_risk.json` |
-| 3 — Divergence / blind spot | Where do citizens and the record disagree? | per-location z-scored complaints minus z-scored incidents | `module3_divergence.json` |
+| 1: Uncertainty-aware ranking | How urgent, and how sure are we? | three quantile Gradient Boosting regressors (5th / 50th / 95th percentile) give a priority band, not a point score | `module1_priority.json` |
+| 2: Weather/temporal calibrated risk | What is the chance of a severe incident next week? | Random Forest on a `(location, week)` panel with real weekly rainfall, then isotonic `CalibratedClassifierCV`; time-aware + rolling-origin validation | `module2_risk.json` |
+| 3: Divergence / blind spot | Where do citizens and the record disagree? | per-location z-scored complaints minus z-scored incidents | `module3_divergence.json` |
 
 Module 3 is kept as a **separate** investigate list in the product, so a data gap never
 silently inflates urgency.
@@ -72,7 +72,7 @@ Only two endpoints are used.
 | Incident Details | `GET /traffic/services/5/incidentDetails?bbox={minLon},{minLat},{maxLon},{maxLat}&fields=...&key=` | `live_incident_count`, `max_live_delay` within a ~300 m box |
 
 Free-tier reality check: Flow ~20k requests/month, Incidents ~2.5k/month. With 1,000
-locations, calling both once already costs ~1,000–2,000 calls, so the notebook only enriches
+locations, calling both once already costs ~1,000 to 2,000 calls, so the notebook only enriches
 the **top-N by priority** and caches every response to disk.
 
 ## Fusion
@@ -93,9 +93,9 @@ Module 3 rides alongside as a flag, not a term in the score.
 | Path | What |
 | --- | --- |
 | `dataset/` | the three source CSVs |
-| `notebooks/module-1.ipynb` | Module 1 — uncertainty-aware ranking |
-| `notebooks/module-2.ipynb` | Module 2 — weather/temporal calibrated risk |
-| `notebooks/module-3.ipynb` | Module 3 — divergence / blind spot |
+| `notebooks/module-1.ipynb` | Module 1: uncertainty-aware ranking |
+| `notebooks/module-2.ipynb` | Module 2: weather/temporal calibrated risk |
+| `notebooks/module-3.ipynb` | Module 3: divergence / blind spot |
 | `notebooks/traffic_features.ipynb` | TomTom Flow + Incident Details enrichment |
 | `notebooks/fusion.ipynb` | joins all modules into the composite queue |
 | `frontend/` | Next.js dashboard (map, 3D city, deployment planner, cards) |

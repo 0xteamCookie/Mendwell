@@ -31,7 +31,7 @@ export type M3 = {
   rank: number;
 };
 
-// Live TomTom traffic + recommended repair window
+// tomtom traffic + repair window
 export type M2 = {
   location_id: string;
   road_type: string;
@@ -46,7 +46,7 @@ export type M2 = {
   measured_at: string;
 };
 
-// Module 2: calibrated weekly severe-incident risk
+// module 2: weekly severe-incident risk
 export type Risk = {
   location_id: string;
   risk_prob: number;
@@ -57,7 +57,18 @@ export type Risk = {
   risk_rank: number;
 };
 
-// Fusion output: one composite score + plain-English why card
+// tomtom live (flow + incidents), top-N only
+export type TrafficFeat = {
+  location_id: string;
+  congestion_ratio: number | null;
+  roadClosure: boolean;
+  frc: string | null;
+  live_incident_count: number | null;
+  max_live_delay: number | null;
+  measured_at: string;
+};
+
+// fusion: composite score + why card
 export type Composite = {
   location_id: string;
   zone: string;
@@ -77,7 +88,7 @@ export type Composite = {
   why_card: string[];
 };
 
-export type Row = M1 & { tt?: M2; risk?: Risk };
+export type Row = M1 & { tt?: M2; risk?: Risk; live?: TrafficFeat };
 export type LatLng = [number, number];
 
 export type Tier = "high" | "medium" | "low";

@@ -1,5 +1,5 @@
 import type { Row, Tier } from "../lib/types";
-import { TEAL, TIER, clean, reasonText, factsOf, congLabel } from "../lib/theme";
+import { TEAL, TIER, clean, reasonText, factsOf, congLabel, liveSpeedLabel } from "../lib/theme";
 import { Icon } from "./icons";
 import { FactTile, Pill, TierTag, RiskTag } from "./ui";
 import { ScoreBar } from "./ScoreBar";
@@ -59,6 +59,19 @@ export function LocationCard({ r, tier, scale, onClose }: { r: Row; tier: Tier; 
             <p className="mt-1 text-sm">{r.tt.window_label} <span className="text-slate-500">{r.tt.window_day}</span></p>
             {congLabel(r.tt.congestion) && <p className="text-xs text-slate-500">Traffic: {congLabel(r.tt.congestion)}</p>}
             {r.tt.roadClosure && <p className="mt-1 text-xs font-semibold" style={{ color: "#dc2626" }}>Road currently closed</p>}
+          </div>
+        )}
+
+        {r.live && r.live.congestion_ratio != null && (
+          <div className="mt-3 rounded-md p-3" style={{ background: "#ecfeff", color: TEAL.deep }}>
+            <div className="flex items-center gap-2 text-sm font-semibold">
+              <Icon name="layers" size={16} /> Live now (TomTom)
+            </div>
+            <p className="mt-1 text-sm text-slate-700">
+              Moving at {liveSpeedLabel(r.live.congestion_ratio)}
+              {r.live.live_incident_count ? `, ${r.live.live_incident_count} active incident(s) nearby` : ""}.
+            </p>
+            {r.live.roadClosure && <p className="mt-1 text-xs font-semibold" style={{ color: "#dc2626" }}>Road currently closed</p>}
           </div>
         )}
 

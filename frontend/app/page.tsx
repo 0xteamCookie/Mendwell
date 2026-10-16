@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { M1, M3, M2, Risk, Composite, Row, Tier } from "./lib/types";
-import { TEAL, TIER, TONE, tierByFraction, clean, reasonText, factsOf, congLabel } from "./lib/theme";
+import type { M1, M3, M2, Risk, Composite, TrafficFeat, Row, Tier } from "./lib/types";
+import { TEAL, TIER, TONE, tierByFraction, clean, reasonText, factsOf, congLabel, liveSpeedLabel } from "./lib/theme";
 import { Icon } from "./components/icons";
 import { FactTile, Pill, TierTag, Card, Kpi, Segmented } from "./components/ui";
 import { ScoreBar } from "./components/ScoreBar";
@@ -19,6 +19,7 @@ export default function Page() {
   const [m2, setM2] = useState<M2[]>([]);
   const [risk, setRisk] = useState<Risk[]>([]);
   const [composite, setComposite] = useState<Composite[]>([]);
+  const [live, setLive] = useState<TrafficFeat[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [listLimit, setListLimit] = useState(12);
   const mapSectionRef = useRef<HTMLElement>(null);
@@ -29,14 +30,16 @@ export default function Page() {
     fetch("/data/module2_traffic.json").then((r) => r.json()).then(setM2).catch(() => { });
     fetch("/data/module2_risk.json").then((r) => r.json()).then(setRisk).catch(() => { });
     fetch("/data/composite_priority.json").then((r) => r.json()).then(setComposite).catch(() => { });
+    fetch("/data/traffic_features.json").then((r) => r.json()).then(setLive).catch(() => { });
   }, []);
 
   const total = m1.length;
   const m2map = useMemo(() => new Map(m2.map((r) => [r.location_id, r])), [m2]);
   const riskMap = useMemo(() => new Map(risk.map((r) => [r.location_id, r])), [risk]);
+  const liveMap = useMemo(() => new Map(live.map((r) => [r.location_id, r])), [live]);
   const ranked = useMemo<Row[]>(
-    () => [...m1].sort((a, b) => a.priority_rank - b.priority_rank).map((r) => ({ ...r, tt: m2map.get(r.location_id), risk: riskMap.get(r.location_id) })),
-    [m1, m2map, riskMap]
+    () => [...m1].sort((a, b) => a.priority_rank - b.priority_rank).map((r) => ({ ...r, tt: m2map.get(r.location_id), risk: riskMap.get(r.location_id), live: liveMap.get(r.location_id) })),
+    [m1, m2map, riskMap, liveMap]
   );
   const byId = useMemo(() => new Map(ranked.map((r) => [r.location_id, r])), [ranked]);
   const selected = selectedId ? byId.get(selectedId) || null : null;
@@ -51,7 +54,7 @@ export default function Page() {
     mapSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
-  const trafficMeasured = useMemo(() => m2.filter((r) => r.congestion !== null).length, [m2]);
+  const liveMeasured = useMemo(() => live.filter((r) => r.congestion_ratio !== null).length, [live]);
 
   const counts = useMemo(() => {
     let high = 0, med = 0, low = 0;
@@ -119,11 +122,12 @@ export default function Page() {
       <main className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6">
         <p className="text-right text-xs text-slate-400">Synthetic data, for demonstration only</p>
 
-        <section className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-4">
+        <section className="mt-4 grid grid-cols-2 gap-4 lg:grid-cols-5">
           <Kpi value={total || "..."} label="Locations analysed" color={TEAL.deep} />
           <Kpi value={counts.high || "..."} label="High priority" color={TIER.high.color} />
           <Kpi value={riskStats.elevated || "..."} label="Elevated risk next week" color={TIER.medium.color} />
           <Kpi value={seg.blind || "..."} label="Reporting blind spots" color={TEAL.deep} />
+          <Kpi value={liveMeasured || "..."} label="Roads measured live (TomTom)" color={TEAL.mid} />
         </section>
 
         <section ref={mapSectionRef} className="mt-5 scroll-mt-4">
@@ -222,6 +226,14 @@ export default function Page() {
                     <p className="mt-1.5 flex items-center gap-2 text-sm font-medium" style={{ color: TEAL.deep }}>
                       <Icon name="clock" size={16} /> Best repair window {r.tt.window_label}
                       {congLabel(r.tt.congestion) ? <span className="font-normal text-slate-500"> · {congLabel(r.tt.congestion)}</span> : null}
+                    </p>
+                  )}
+
+                  {r.live && r.live.congestion_ratio != null && (
+                    <p className="mt-1.5 flex items-center gap-2 text-sm font-medium" style={{ color: TEAL.mid }}>
+                      <Icon name="layers" size={16} /> Live: moving at {liveSpeedLabel(r.live.congestion_ratio)}
+                      {r.live.live_incident_count ? <span className="font-normal text-slate-500"> · {r.live.live_incident_count} active nearby</span> : null}
+                      {r.live.roadClosure ? <span className="font-semibold" style={{ color: "#dc2626" }}> · road closed</span> : null}
                     </p>
                   )}
 

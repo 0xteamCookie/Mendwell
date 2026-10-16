@@ -27,7 +27,7 @@ export const TONE: Record<Tone, { fg: string; bg: string }> = {
   mute: { fg: "#64748b", bg: "#f1f5f9" },
 };
 
-// Forward-looking risk label styling (Module 2)
+// module 2 risk label styling
 export const RISK: Record<string, { label: string; tone: Tone }> = {
   elevated: { label: "Elevated risk", tone: "bad" },
   moderate: { label: "Moderate risk", tone: "warn" },
@@ -40,6 +40,13 @@ export function congLabel(c?: number | null) {
   if (c == null) return null;
   const pct = Math.round(c * 100);
   return pct < 5 ? "free flowing now" : `${pct}% slower now`;
+}
+
+// ratio: 1 free-flow, 0 jammed
+export function liveSpeedLabel(ratio?: number | null) {
+  if (ratio == null) return null;
+  const pct = Math.round(ratio * 100);
+  return pct >= 90 ? "free flowing" : `${pct}% of free-flow speed`;
 }
 
 export function reasonText(r: M1) {

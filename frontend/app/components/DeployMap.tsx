@@ -22,7 +22,7 @@ export function DeployMap({ ranked, total }: { ranked: Row[]; total: number }) {
 
   const stops = useMemo(() => ranked.slice(0, nStops), [ranked, nStops]);
 
-  // default depot: centroid of selected sites
+  // depot defaults to stops centroid
   useEffect(() => {
     if (depot || !stops.length) return;
     setDepot([stops.reduce((s, r) => s + r.latitude, 0) / stops.length, stops.reduce((s, r) => s + r.longitude, 0) / stops.length]);
@@ -53,7 +53,7 @@ export function DeployMap({ ranked, total }: { ranked: Row[]; total: number }) {
 
   const hasPlan = plan !== null;
 
-  // preview markers (before a plan exists)
+  // preview markers, pre-plan
   useEffect(() => {
     const L = (window as any).L;
     if (!mapReady || !L || !layers.current || hasPlan) return;
@@ -68,7 +68,7 @@ export function DeployMap({ ranked, total }: { ranked: Row[]; total: number }) {
     if (b.isValid()) mapRef.current.fitBounds(b, { padding: [40, 40] });
   }, [mapReady, stops, total, hasPlan]);
 
-  // depot marker (draggable until a plan exists)
+  // depot marker, draggable until planned
   useEffect(() => {
     const L = (window as any).L;
     if (!mapReady || !L || !layers.current || !depot) return;
@@ -105,7 +105,7 @@ export function DeployMap({ ranked, total }: { ranked: Row[]; total: number }) {
 
     const crews = buildPlan(stops, depot, nCrews);
 
-    // real road geometry from OSRM, falling back to straight legs
+    // osrm road geometry, fallback to straight legs
     let failed = false;
     const routes: RouteRes[] = await Promise.all(
       crews.map(async (c) => {
