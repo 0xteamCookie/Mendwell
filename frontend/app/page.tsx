@@ -35,6 +35,29 @@ type M3 = {
   rank: number;
 };
 
+// Module 2: live TomTom traffic + recommended repair window
+type M2 = {
+  location_id: string;
+  road_type: string;
+  freeFlowSpeed: number | null;
+  currentSpeed: number | null;
+  congestion: number | null;
+  roadClosure: boolean;
+  window_start: number;
+  window_end: number;
+  window_label: string;
+  window_day: string;
+  measured_at: string;
+};
+
+type Row = M1 & { tt?: M2 };
+
+function congLabel(c?: number | null) {
+  if (c == null) return null;
+  const pct = Math.round(c * 100);
+  return pct < 5 ? "free flowing now" : `${pct}% slower now`;
+}
+
 const TEAL = { light: "#a7eef7", mid: "#22d3ee", deep: "#0e7490", ink: "#0b4f5e" };
 
 // Priority = traffic lights. Red high, yellow medium, green low.
@@ -117,7 +140,7 @@ function loadLeaflet(): Promise<any> {
   });
 }
 
-function MapView({ points }: { points: M1[] }) {
+function MapView({ points }: { points: Row[] }) {
   useEffect(() => {
     if (!points.length) return;
     let map: any;
@@ -146,7 +169,8 @@ function MapView({ points }: { points: M1[] }) {
         })
           .addTo(map)
           .bindPopup(
-            `<b>#${p.priority_rank} ${p.location_id}</b><br/>${p.zone}<br/>${TIER[tier].label}<br/>${p.road_condition} road, ${p.pedestrian_activity} foot traffic<br/>${p.incident_count} incidents, ${p.complaint_count} complaints`
+            `<b>#${p.priority_rank} ${p.location_id}</b><br/>${p.zone}<br/>${TIER[tier].label}<br/>${p.road_condition} road, ${p.pedestrian_activity} foot traffic<br/>${p.incident_count} incidents, ${p.complaint_count} complaints` +
+            (p.tt ? `<br/><b>Repair window:</b> ${p.tt.window_label}${congLabel(p.tt.congestion) ? `<br/>Traffic: ${congLabel(p.tt.congestion)}` : ""}` : "")
           );
       });
     });
@@ -254,15 +278,35 @@ function Card({ title, children, right }: { title?: string; children: React.Reac
 export default function Page() {
   const [m1, setM1] = useState<M1[]>([]);
   const [m3, setM3] = useState<M3[]>([]);
+  const [m2, setM2] = useState<M2[]>([]);
 
   useEffect(() => {
     fetch("/data/module1_priority.json").then((r) => r.json()).then(setM1).catch(() => {});
     fetch("/data/module3_divergence.json").then((r) => r.json()).then(setM3).catch(() => {});
+    fetch("/data/module2_traffic.json").then((r) => r.json()).then(setM2).catch(() => {});
   }, []);
 
   const total = m1.length;
-  const ranked = useMemo(() => [...m1].sort((a, b) => a.priority_rank - b.priority_rank), [m1]);
+  const m2map = useMemo(() => new Map(m2.map((r) => [r.location_id, r])), [m2]);
+  const ranked = useMemo<Row[]>(
+    () => [...m1].sort((a, b) => a.priority_rank - b.priority_rank).map((r) => ({ ...r, tt: m2map.get(r.location_id) })),
+    [m1, m2map]
+  );
   const topPriority = useMemo(() => ranked.slice(0, 12), [ranked]);
+
+  // Repair schedule: highest priority locations that have a live-traffic window
+  const schedule = useMemo(() => ranked.filter((r) => r.tt).slice(0, 20), [ranked]);
+  const traffic = useMemo(() => {
+    const live = m2.filter((r) => r.congestion !== null);
+    const avg = live.length ? live.reduce((s, r) => s + (r.congestion || 0), 0) / live.length : 0;
+    const buckets = [
+      { label: "Night (00 to 06)", color: TEAL.deep, test: (h: number) => h < 6 },
+      { label: "Morning (06 to 10)", color: TEAL.mid, test: (h: number) => h >= 6 && h < 10 },
+      { label: "Midday (10 to 16)", color: TEAL.light, test: (h: number) => h >= 10 && h < 16 },
+      { label: "Evening (16 to 24)", color: "#5eceda", test: (h: number) => h >= 16 },
+    ].map((b) => ({ label: b.label, color: b.color, value: m2.filter((r) => b.test(r.window_start)).length }));
+    return { measured: live.length, avg, buckets };
+  }, [m2]);
 
   const counts = useMemo(() => {
     let high = 0, med = 0, low = 0;
@@ -332,7 +376,41 @@ export default function Page() {
         <Kpi value={total || "..."} label="Locations analysed" color={TEAL.deep} />
         <Kpi value={counts.high || "..."} label="High priority" color={TIER.high.color} />
         <Kpi value={seg.blind || "..."} label="Reporting blind spots" color={TIER.medium.color} />
-        <Kpi value={counts.conf.high || "..."} label="High confidence scores" color={TEAL.deep} />
+        <Kpi value={traffic.measured || "..."} label="Roads measured live (TomTom)" color={TEAL.deep} />
+      </section>
+
+      {/* Repair schedule — live traffic */}
+      <section className="mt-5">
+        <Card
+          title="Repair schedule (live TomTom traffic)"
+          right={<span className="text-xs text-slate-500">what to fix, and when traffic is lightest</span>}
+        >
+          <div className="divide-y" style={{ borderColor: "var(--border)" }}>
+            {schedule.map((r) => {
+              const tier = tierByFraction(r.priority_rank / total);
+              const cl = congLabel(r.tt!.congestion);
+              return (
+                <div key={r.location_id} className="flex flex-wrap items-center gap-x-4 gap-y-1 py-2.5">
+                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white" style={{ background: TIER[tier].color }}>{r.priority_rank}</span>
+                  <div className="min-w-[150px] flex-1">
+                    <span className="font-semibold text-slate-900">{r.location_id}</span>
+                    <span className="text-slate-500"> in {r.zone.replace("_", " ")} · {r.tt!.road_type}</span>
+                  </div>
+                  {r.tt!.roadClosure && <span className="rounded px-2 py-0.5 text-xs font-semibold" style={{ background: "#fef2f2", color: "#dc2626" }}>road closed</span>}
+                  {cl && <span className="text-xs text-slate-500">{cl}</span>}
+                  <span className="rounded-md px-3 py-1 text-sm font-semibold" style={{ background: "var(--teal-50)", color: TEAL.deep }}>
+                    {r.tt!.window_label}
+                  </span>
+                  <span className="hidden text-xs text-slate-400 sm:inline">{r.tt!.window_day}</span>
+                </div>
+              );
+            })}
+            {!schedule.length && <p className="py-2 text-sm text-slate-400">Loading live traffic...</p>}
+          </div>
+          <p className="mt-3 text-xs text-slate-500">
+            Window is the lowest-traffic period for each road, from live TomTom speeds plus a time-of-day model. Busy roads shift to deep night, quiet roads to daytime off-peak.
+          </p>
+        </Card>
       </section>
 
       {/* Band chart */}
@@ -399,6 +477,9 @@ export default function Page() {
               ]}
             />
           </Card>
+          <Card title="When repairs land">
+            <Segmented segments={traffic.buckets} />
+          </Card>
         </div>
       </section>
 
@@ -420,6 +501,12 @@ export default function Page() {
                         {r.location_id} <span className="font-normal text-slate-500">in {r.zone.replace("_", " ")}</span>
                       </p>
                       <p className="mt-0.5 text-sm text-slate-600">Flagged for {reasonText(r)}.</p>
+                      {r.tt && (
+                        <p className="mt-1 text-sm font-medium" style={{ color: TEAL.deep }}>
+                          Best repair window {r.tt.window_label}
+                          {congLabel(r.tt.congestion) ? <span className="font-normal text-slate-500"> · {congLabel(r.tt.congestion)}</span> : null}
+                        </p>
+                      )}
                     </div>
                   </div>
                   <div className="flex shrink-0 flex-col items-end gap-1.5">
@@ -468,6 +555,7 @@ export default function Page() {
           <li>Module 1: three quantile gradient boosting regressors (5th, 50th, 95th percentile) predict a priority band from location context only, so sparse locations still get a usable estimate.</li>
           <li>Confidence comes from the width of that band, split into terciles across all locations.</li>
           <li>Module 3: weighted incidents and complaints are z-scored per location, and their difference (divergence) flags over and under reporting.</li>
+          <li>Module 2: live road speeds come from the TomTom Flow API (current vs free-flow speed). The repair window is the lowest-traffic period from a time-of-day model anchored to that live reading, so busy roads move to deep night and quiet roads to daytime off-peak.</li>
           <li>Priority tiers (high, medium, low) split the ranked locations into equal thirds.</li>
           <li>Data is synthetic and for demonstration only, not real civic records.</li>
         </ul>
