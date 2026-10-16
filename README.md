@@ -71,9 +71,6 @@ Only two endpoints are used.
 | Flow Segment Data | `GET /traffic/services/4/flowSegmentData/absolute/10/json?point={lat},{lon}&unit=KMPH&key=` | `congestion_ratio = currentSpeed / freeFlowSpeed` (0 = jammed, 1 = free-flow) |
 | Incident Details | `GET /traffic/services/5/incidentDetails?bbox={minLon},{minLat},{maxLon},{maxLat}&fields=...&key=` | `live_incident_count`, `max_live_delay` within a ~300 m box |
 
-Free-tier reality check: Flow ~20k requests/month, Incidents ~2.5k/month. With 1,000
-locations, calling both once already costs ~1,000 to 2,000 calls, so the notebook only enriches
-the **top-N by priority** and caches every response to disk.
 
 ## Fusion
 
